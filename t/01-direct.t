@@ -10,20 +10,21 @@ my $uri = ( $ENV{'CDB_TEST_URI'} or 'http://localhost:5984' );
 my $db = ( $ENV{'CDB_TEST_DB'} or 'app_session' );
 
 ok(
-	my $s = Catalyst::Plugin::Session::Store::CouchDB->new({
-		'uri' => $uri,
-		'db'  => $db,
-	}),
+	my $s = Catalyst::Plugin::Session::Store::CouchDB->new(),
 	'new'
 );
 
 if ( $ENV{'CDB_LIVE_TEST'} ) {
+
+	$s->_my_config->{'couch_uri'}      = $uri;
+	$s->_my_config->{'couch_database'} = $db;
+
 	my $random_id = 'session:' . sha1_hex( $$ . time );
 
 	$s->setup_session();
 
-	is( ref( $s->_cdbc ), 'CouchDB::Client', 'client' );
-	is( ref( $s->_cdb_session_db ), 'CouchDB::Client::DB', 'db' );
+	is( ref( $s->_cdbc ), 'AnyEvent::CouchDB', 'client' );
+	is( ref( $s->_cdb_session_db ), 'AnyEvent::CouchDB::Database', 'db' );
 	is( $s->get_session_data($random_id), undef, 'empty session' );
 
 	ok( $s->store_session_data( $random_id, 'random data' ), 'store session' );
