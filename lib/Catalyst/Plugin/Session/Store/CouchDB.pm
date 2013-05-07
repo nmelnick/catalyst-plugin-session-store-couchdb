@@ -7,53 +7,35 @@ use AnyEvent::CouchDB;
 our $VERSION = '0.03';
 
 BEGIN {
-	with 'Catalyst::ClassData';
 	extends 'Catalyst::Plugin::Session::Store';
+	with 'Catalyst::ClassData';
+	with 'MooseX::Emulate::Class::Accessor::Fast';
 }
 
-has _cdbc => (
-	is  => 'rw',
-	isa => 'AnyEvent::CouchDB'
-);
-
-has _cdb_session_db => (
-	is  => 'rw',
-	isa => 'AnyEvent::CouchDB::Database'
-);
-
-has _my_config => (
-	is  => 'ro',
-	isa => 'HashRef',
-	lazy_build => 1
-);
-
-sub _build__my_config {
-	my ($c) = @_;
-
-	return (
-		$c->can('_session_plugin_config') ?
-			$c->_session_plugin_config
-			: (
-				$c->can('config') ?
-					$c->config->{'Plugin::Session'}
-					: {}
-			)
-	);
-}
+__PACKAGE__->mk_classdata('_cdbc');
+__PACKAGE__->mk_classdata('_cdb_session_db');
+__PACKAGE__->mk_classdata('_cdb_config');
 
 sub setup_session {
 	my ($c) = @_;
 
     $c->maybe::next::method(@_);
 
-    if ( $c->_my_config->{'uri'} and $c->_my_config->{'database'} ) {
+	my $config;
+	$config ||= $c->_session_plugin_config if ( $c->can('_session_plugin_config') );
+	$config ||= ( $c->config->{'Plugin::Session'} or $c->config->{'session'} ) if ( $c->can('config') );
+	$config ||= {};
+	$c->_cdb_config($config);
+
+    if ( $c->_cdb_config->{'uri'} and $c->_cdb_config->{'database'} ) {
     	$c->log->warn('Config parameters "uri" and "database" are deprecated, and will be removed in a future release.');
-    	$c->_my_config->{'couch_uri'} = $c->_my_config->{'uri'};
-    	$c->_my_config->{'couch_database'} = $c->_my_config->{'database'};
+    	$c->_cdb_config->{'couch_uri'} = $c->_cdb_config->{'uri'};
+    	$c->_cdb_config->{'couch_database'} = $c->_cdb_config->{'database'};
     }
 
-    my $uri = ( $c->_my_config->{'couch_uri'} or 'http://localhost:5984' );
-    my $db = ( $c->_my_config->{'couch_database'} or 'app_session' );
+    my $uri = ( $c->_cdb_config->{'couch_uri'} or 'http://localhost:5984/' );
+    my $db = ( $c->_cdb_config->{'couch_database'} or 'app_session' );
+    $uri .= '/' unless ( $uri =~ /\/$/ );
     $c->_cdbc( couch($uri) );
 
 	my $success = eval {

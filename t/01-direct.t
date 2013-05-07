@@ -6,7 +6,7 @@ use Digest::SHA1 qw(sha1_hex);
 
 use_ok('Catalyst::Plugin::Session::Store::CouchDB');
 
-my $uri = ( $ENV{'CDB_TEST_URI'} or 'http://localhost:5984' );
+my $uri = ( $ENV{'CDB_TEST_URI'} or 'http://localhost:5984/' );
 my $db = ( $ENV{'CDB_TEST_DB'} or 'app_session' );
 
 ok(
